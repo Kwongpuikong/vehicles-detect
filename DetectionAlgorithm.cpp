@@ -1,4 +1,4 @@
-#include "vehicles313.h"
+#include "vehicles.h"
 
 #define USE_VIDEO 1
 
@@ -178,89 +178,45 @@ int algorithm(const char* filename){
 		//step3.2:	convert RGB image into grey image.
 		cvCvtColor(frame,grey,CV_RGB2GRAY);
 
-		//step3.3:	
+		//step3.3:	control LCR(default is 2) to construct 3 area of lane.
+		//-1: left area.	0:central area.		1:right area.		2:all.
 		Lane(grey,laneModel,tmp,pts[0],pts[1],pts[2],pts[3],pts[4],pts[5],pts[6],pts[7]);
 
 		//step3.4:	cut roi.
 		crop(grey,roi,cvRect(0,pts[0].y,roi->width,roi->height));
 
-		//step3.5:	
-		threshold(roi,roi,shadowBound(roi,laneModel),255);
+		//step3.5:	rid of text,shadow.
+		threshold(roi,roi,shadowBound(roi,laneModel),255);//cvDilate(roi,roi,0,1);
 
-		//cvDilate(roi,roi,0,1);
-
+		/*
+		step3.6:	
+			sobel to extract line between vehicle shadow and road.
+			erode and morphologyEx to make that line beauty or easy to detect.
+		*/
 		sobel(roi,roi_sobel);
-
 		cvErode(roi_sobel,roi_sobel_erode,erode,1);
-
 		cvMorphologyEx(roi_sobel,roi_sobel,0,structure,CV_MOP_CLOSE,1);
 		
+		//step3.7:	record rows which cars appears.
 		vehiclesLocation(roi_sobel,roi_sobel_erode,l1,l2,l3,l4,location,drift);
 
+		//step3.8:	generate boxes case cars. 
 		genVehicleBoxes(boxes,location,l1,l2,l3,l4,drift);
 
+		//step3.9:	verify boxes whether there is a car.
 		verifyBoxes(grey,boxes);
 	
+		//step3.10:	output results.
 		drawVehicles(frame,boxes);
 
 		end = clock();
 
 		mspf += (double)(end-start);
 
-		/*if(!strcmp(filename,"F:\\kwong\\videofortest\\test1.mov")){
-
-			sprintf(name,"F:\\kwong\\test1\\frame%05d.jpg",current_frame);
-			cvSaveImage(name,frame);
-		}
-		if(!strcmp(filename,"F:\\kwong\\videofortest\\test2.mov")){
-		
-			sprintf(name,"F:\\kwong\\test2\\frame%05d.jpg",current_frame);
-			cvSaveImage(name,frame);
-		}*/
-
 		cvNamedWindow("vehicles");
 		cvShowImage("vehicles",frame);
-		cvNamedWindow("roi");
-		cvShowImage("roi",tmp);
-
-		/*sprintf(name,"F:\\kwong\\center\\center%05d.jpg",current_frame);
-		cvSetImageROI(frame,cvRect(boxes[1].bmin.x,boxes[1].bmin.y,boxes[1].bmax.x-boxes[1].bmin.x,boxes[1].bmax.y-boxes[1].bmin.y));
-		cvSaveImage(name,frame);
-		cvResetImageROI(frame);*/
-
-		/*sprintf(name,"F:\\kwong\\left\\left%05d.jpg",current_frame);
-		cvSetImageROI(frame,cvRect(boxes[0].bmin.x,boxes[0].bmin.y,boxes[0].bmax.x-boxes[0].bmin.x,boxes[0].bmax.y-boxes[0].bmin.y));
-		cvSaveImage(name,frame);
-		cvResetImageROI(frame);*/
-
-		/*sprintf(name,"F:\\kwong\\right\\right%05d.jpg",current_frame);
-		cvSetImageROI(frame,cvRect(boxes[2].bmin.x,boxes[2].bmin.y,boxes[2].bmax.x-boxes[2].bmin.x,boxes[2].bmax.y-boxes[2].bmin.y));
-		cvSaveImage(name,frame);
-		cvResetImageROI(frame);*/
-
-
-		/*printf("current_frame:%d\n",current_frame);
-		cvWriteFrame(writer,frame);*/
 
 		key_pressed = cvWaitKey(15);
-
-		/*printf("current = %d\n",current_frame);*/
-		//system("pause");
 	}
-	
-	/*//cvReleaseImage(&frame);
-	cvReleaseImage(&grey);
-	cvReleaseImage(&laneModel);
-	cvReleaseImage(&roi);
-	cvReleaseImage(&roi_sobel);
-	cvReleaseImage(&roi_sobel_erode);
-	cvReleaseImage(&tmp);
-	
-
-	cvReleaseStructuringElement(&structure);
-	cvReleaseStructuringElement(&erode);
-
-	cvReleaseCapture(&input_video);
-	cvReleaseVideoWriter(&writer);*/
 	return 1;
 }
