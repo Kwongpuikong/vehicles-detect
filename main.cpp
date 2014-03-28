@@ -8,16 +8,16 @@ void print(){
 
 int main(int argc,char* argv[]){
 
-	//char* file;
+	char* file;
 
-	//if(argc!=2){
-	//	print();
-	//}
-	//else{
-	//
-	//	file = argv[1]+1;
-	//}
+	if(argc!=2){
+		print();
+	}
+	else{
+	
+		file = argv[1]+1;
+	}
 
-	algorithm("C:\\Users\\lab\\Desktop\\demonstration\\test4.avi");
+	algorithm(file);
 	return 1;
 }

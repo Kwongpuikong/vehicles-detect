@@ -43,6 +43,7 @@ bool initial(const char* filename){
 
 	frame = NULL;
 
+	//8 points definition based on the origin size
 	pts[0] = cvPoint(video_size.width/2-25-50,video_size.height*0.65);
 	pts[1] = cvPoint(video_size.width/2-25-350,video_size.height*0.8);
 	pts[2] = cvPoint(video_size.width/2-25-25,video_size.height*0.65);
@@ -52,16 +53,25 @@ bool initial(const char* filename){
 	pts[6] = cvPoint(video_size.width/2-25+50,video_size.height*0.65);
 	pts[7] = cvPoint(video_size.width/2-25+350,video_size.height*0.8);
 
+	//roi means the bottom part of a frame
 	roi_size.height = video_size.height-pts[0].y;
 	roi_size.width = video_size.width;
 
+	/*
+	origin size:	grey,laneModel
+	ROI size:		roi,roi_sobel,roi_sobel_erode,tmp
+	*/
 	grey = cvCreateImage(video_size,IPL_DEPTH_8U,1);
 	laneModel = cvCreateImage(video_size,IPL_DEPTH_8U,1);
 
 	roi = cvCreateImage(roi_size,IPL_DEPTH_8U,1);
 	roi_sobel = cvCreateImage(roi_size,IPL_DEPTH_8U,1);
 	roi_sobel_erode = cvCreateImage(roi_size,IPL_DEPTH_8U,1);
+
+	//tmp is for debugging
 	tmp = cvCreateImage(roi_size,IPL_DEPTH_8U,1);
+
+	//structure,erode is 5cols 1row.different anchor.
 	structure = cvCreateStructuringElementEx(5,1,3,0,CV_SHAPE_RECT,0);
 	erode = cvCreateStructuringElementEx(5,1,0,0,CV_SHAPE_RECT,0);
 
@@ -71,17 +81,15 @@ bool initial(const char* filename){
 /*release memory*/
 void release(){
 
+	//every struct needs release to avoid memory leak
 	cvReleaseImage(&grey);
 	cvReleaseImage(&laneModel);
 	cvReleaseImage(&roi);
 	cvReleaseImage(&roi_sobel);
 	cvReleaseImage(&roi_sobel_erode);
 	cvReleaseImage(&tmp);
-	
-
 	cvReleaseStructuringElement(&structure);
 	cvReleaseStructuringElement(&erode);
-
 	cvReleaseCapture(&input_video);
 }
 
@@ -89,81 +97,70 @@ void release(){
 /*algorithm*/
 int algorithm(const char* filename){
 	
-/*#ifdef USE_VIDEO
-	CvCapture* input_video = cvCreateFileCapture("F:\\kwong\\videoForTest\\01510022.mov");
-#else
-	CvCapture* input_video = cvCaptureFromCAM(0);
-#endif
-
-	//debug
-	char name[50];
-	ofstream file("F:\\kwong\\data+time.txt",ios_base::app);
-	
-	if(input_video == NULL){
-		fprintf(stderr,"Error:Cant open video\n");
-		return -1;
-	}
-
-	double fps = (double)cvGetCaptureProperty(input_video,CV_CAP_PROP_FPS);
-	CvVideoWriter* writer = cvCreateVideoWriter("G:\\kwong\\gain.avi",CV_FOURCC('D','I','V','X'),fps,video_size,1);
-
-	std::vector<int> l1;
-	std::vector<int> l2;
-	std::vector<int> l3;
-	std::vector<int> l4;
-	int drift;
-	vehicle location[3];
-	vehicleBox boxes[3];
-	clock_t tb;
-	clock_t te;
-	double t =0;
-
-	IplImage* grey = cvCreateImage(video_size,IPL_DEPTH_8U,1);
-	IplImage* laneModel = cvCreateImage(video_size,IPL_DEPTH_8U,1);
-
-	CvSize roi_size;
-	roi_size.height = video_size.height-pts[0].y;
-	roi_size.width = video_size.width;
-
-	IplImage* roi = cvCreateImage(roi_size,IPL_DEPTH_8U,1);
-	IplImage* roi_sobel = cvCreateImage(roi_size,IPL_DEPTH_8U,1);
-	IplImage* roi_sobel_erode = cvCreateImage(roi_size,IPL_DEPTH_8U,1);
-	IplImage* tmp = cvCreateImage(roi_size,IPL_DEPTH_8U,1);
-	
-	IplConvKernel* structure = cvCreateStructuringElementEx(5,1,3,0,CV_SHAPE_RECT,0);
-	IplConvKernel* erode = cvCreateStructuringElementEx(5,1,0,0,CV_SHAPE_RECT,0);*/
-
+	/*
+	start,end:	(time)start of algorithm,end of algorithm.
+	mspf:		ms per frame.
+	*/
 	clock_t start;
 	clock_t end;
 	double mspf = 0;
 
+	/*
+	l1,l2,l3,l4:	4 lane lines(from left to right).
+	*/
 	std::vector<int> l1;
 	std::vector<int> l2;
 	std::vector<int> l3;
 	std::vector<int> l4;
+
+	//drift:	pt[0].y(means the gap between origin height and roi height).
 	int drift;
+
+	/*
+	location[3]:	record rows which cars appear.
+	boxes[3]:		bounding of cars.
+	*/
 	vehicle location[3];
 	vehicleBox boxes[3];
 
+	/*
+	current_frame:	number of current frame.
+	key_pressed:	receive pressed key from keyboard when cvWaitKey().
+	*/
 	long current_frame = 0;
 	int key_pressed = 0;
 
+	/*
+	step1.
+		initial all variables we use.
+	*/
 	if(!initial(filename)){
 		fprintf(stderr,"Error:Initialize Failed!!!\n");
 		return -1;
 	}
 
-
+	/*
+	step2.
+		construct(calculate) 4 lane lines for once.
+	*/
 	laneBorder(video_size,
 			pts[0],pts[1],pts[2],pts[3],pts[4],pts[5],pts[6],pts[7],
 			l1,l2,l3,l4,drift);
 
+	/*
+	step3.
+		loop. processing each frame.
+	*/
 	while(key_pressed != 27){
 		
 		start = clock();
 
+		//step3.1:	grap a frame from video.
 		frame = cvQueryFrame(input_video);
 
+		/*
+		when video is finish.print some info and release memory.
+		*/
 		if(frame == NULL){
 			fprintf(stderr,"Error: null frame received\n");
 			printf("***********************\n");
@@ -178,11 +175,16 @@ int algorithm(const char* filename){
 
 		current_frame++;
 
+		//step3.2:	convert RGB image into grey image.
 		cvCvtColor(frame,grey,CV_RGB2GRAY);
 
+		//step3.3:	
 		Lane(grey,laneModel,tmp,pts[0],pts[1],pts[2],pts[3],pts[4],pts[5],pts[6],pts[7]);
+
+		//step3.4:	cut roi.
 		crop(grey,roi,cvRect(0,pts[0].y,roi->width,roi->height));
 
+		//step3.5:	
 		threshold(roi,roi,shadowBound(roi,laneModel),255);
 
 		//cvDilate(roi,roi,0,1);
