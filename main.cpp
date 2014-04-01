@@ -1,4 +1,4 @@
-#include "vehicles313.h"
+#include "vehicles.h"
 
 void print(){
 
@@ -8,7 +8,7 @@ void print(){
 
 int main(int argc,char* argv[]){
 
-	char* file;
+	/*char* file;
 
 	if(argc!=2){
 		print();
@@ -16,8 +16,8 @@ int main(int argc,char* argv[]){
 	else{
 	
 		file = argv[1]+1;
-	}
+	}*/
 
-	algorithm(file);
+	algorithm("E:\\graduate\\project\\videofortest\\01510022.mov");
 	return 1;
 }

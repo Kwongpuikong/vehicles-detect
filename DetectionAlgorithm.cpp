@@ -180,13 +180,14 @@ int algorithm(const char* filename){
 
 		//step3.3:	control LCR(default is 2) to construct 3 area of lane.
 		//-1: left area.	0:central area.		1:right area.		2:all.
-		Lane(grey,laneModel,tmp,pts[0],pts[1],pts[2],pts[3],pts[4],pts[5],pts[6],pts[7]);
+		//Lane is for debug.
+		//Lane(grey,laneModel,tmp,pts[0],pts[1],pts[2],pts[3],pts[4],pts[5],pts[6],pts[7]);
 
 		//step3.4:	cut roi.
 		crop(grey,roi,cvRect(0,pts[0].y,roi->width,roi->height));
 
 		//step3.5:	rid of text,shadow.
-		threshold(roi,roi,shadowBound(roi,laneModel),255);//cvDilate(roi,roi,0,1);
+		threshold(roi,roi,shadowBound(roi),255);//cvDilate(roi,roi,0,1);
 
 		/*
 		step3.6:	

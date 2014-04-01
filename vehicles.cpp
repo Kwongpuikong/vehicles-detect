@@ -135,20 +135,28 @@ void laneBorder(CvSize video_size,
 }
 
 /*shadow upper bound*/
-double shadowBound(IplImage* roi,IplImage* laneModel){
-
-	int h = laneModel->height-roi->height;
-	IplImage* mask = cvCreateImage(cvGetSize(roi),IPL_DEPTH_8U,1);
-	crop(laneModel,mask,cvRect(0,h,roi->width,roi->height));
+//double shadowBound(IplImage* roi,IplImage* laneModel){
+//
+//	int h = laneModel->height-roi->height;
+//	IplImage* mask = cvCreateImage(cvGetSize(roi),IPL_DEPTH_8U,1);
+//	crop(laneModel,mask,cvRect(0,h,roi->width,roi->height));
+//
+//	CvScalar mean;
+//	CvScalar dev;
+//	cvAvgSdv(roi,&mean,&dev,mask);
+//	cvReleaseImage(&mask);
+//
+//	//printf("mean:%f\tdev:%f\nt:%f\n\n",mean.val[0],dev.val[0],mean.val[0]-dev.val[0]*dev.val[0]/mean.val[0]);
+//	//printf("t:%f\n",mean.val[0]-dev.val[0]);
+//
+//	return (mean.val[0]-dev.val[0]);
+//}
+double shadowBound(IplImage* roi){
 
 	CvScalar mean;
 	CvScalar dev;
-	cvAvgSdv(roi,&mean,&dev,mask);
-	cvReleaseImage(&mask);
-
-	//printf("mean:%f\tdev:%f\nt:%f\n\n",mean.val[0],dev.val[0],mean.val[0]-dev.val[0]*dev.val[0]/mean.val[0]);
-	//printf("t:%f\n",mean.val[0]-dev.val[0]);
-
+	cvAvgSdv(roi,&mean,&dev);
+	
 	return (mean.val[0]-dev.val[0]);
 }
 

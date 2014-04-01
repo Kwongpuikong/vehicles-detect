@@ -49,7 +49,8 @@ void laneBorder(CvSize video_size,
 				int& drift);
 
 /*shadow upper bound*/
-double shadowBound(IplImage* roi,IplImage* laneModel);
+//double shadowBound(IplImage* roi,IplImage* laneModel);
+double shadowBound(IplImage* roi);
 
 /*Sobel*/
 void sobel(IplImage* roi,IplImage* roi_sobel);
