@@ -8,6 +8,8 @@
 #include <time.h>
 #include <iostream>
 #include <fstream>
+#include <ml.h>
+#include <string>
 
 //定义结构体
 struct vehicle{
@@ -77,11 +79,17 @@ double Entropy(IplImage* grey,CvRect rect,CvHistogram* hist);
 /*verify vehicle box*/
 void verifyBoxes(IplImage* grey,vehicleBox boxes[]);
 
+/*classify box*/
+void classifyBoxes(IplImage* grey,vehicleBox boxes[]);
+
 /*draw vehicles*/
 void drawVehicles(IplImage* frame,vehicleBox boxes[]);
 
 /*algorithm*/
 int algorithm(const char* filename);
+
+/*svm training*/
+void svmTrain(const char* pos,const char* neg);
 
 
 #endif // VEHICLES_H

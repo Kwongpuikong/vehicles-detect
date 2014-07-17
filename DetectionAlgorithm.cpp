@@ -22,6 +22,12 @@ IplImage* tmp;
 IplConvKernel* structure;
 IplConvKernel* erode;
 
+std::vector<int> l1;
+	std::vector<int> l2;
+	std::vector<int> l3;
+	std::vector<int> l4;
+	int drift;
+
 
 /*initial variable*/
 bool initial(const char* filename){
@@ -75,6 +81,10 @@ bool initial(const char* filename){
 	structure = cvCreateStructuringElementEx(5,1,3,0,CV_SHAPE_RECT,0);
 	erode = cvCreateStructuringElementEx(5,1,0,0,CV_SHAPE_RECT,0);
 
+	laneBorder(video_size,
+			pts[0],pts[1],pts[2],pts[3],pts[4],pts[5],pts[6],pts[7],
+			l1,l2,l3,l4,drift);
+
 	return true;
 }
 
@@ -94,6 +104,7 @@ void release(){
 }
 
 
+
 /*algorithm*/
 int algorithm(const char* filename){
 	
@@ -108,13 +119,13 @@ int algorithm(const char* filename){
 	/*
 	l1,l2,l3,l4:	4 lane lines(from left to right).
 	*/
-	std::vector<int> l1;
+	/*std::vector<int> l1;
 	std::vector<int> l2;
 	std::vector<int> l3;
-	std::vector<int> l4;
+	std::vector<int> l4;*/
 
 	//drift:	pt[0].y(means the gap between origin height and roi height).
-	int drift;
+	/*int drift;*/
 
 	/*
 	location[3]:	record rows which cars appear.
@@ -143,9 +154,9 @@ int algorithm(const char* filename){
 	step2.
 		construct(calculate) 4 lane lines for once.
 	*/
-	laneBorder(video_size,
+	/*laneBorder(video_size,
 			pts[0],pts[1],pts[2],pts[3],pts[4],pts[5],pts[6],pts[7],
-			l1,l2,l3,l4,drift);
+			l1,l2,l3,l4,drift);*/
 
 	/*
 	step3.
@@ -157,7 +168,8 @@ int algorithm(const char* filename){
 
 		//step3.1:	grap a frame from video.
 		frame = cvQueryFrame(input_video);
-
+		//frame = cvLoadImage("car_bmp1.bmp");
+		
 		/*
 		when video is finish.print some info and release memory.
 		*/
@@ -181,7 +193,7 @@ int algorithm(const char* filename){
 		//step3.3:	control LCR(default is 2) to construct 3 area of lane.
 		//-1: left area.	0:central area.		1:right area.		2:all.
 		//Lane is for debug.
-		//Lane(grey,laneModel,tmp,pts[0],pts[1],pts[2],pts[3],pts[4],pts[5],pts[6],pts[7]);
+		Lane(grey,laneModel,tmp,pts[0],pts[1],pts[2],pts[3],pts[4],pts[5],pts[6],pts[7]);
 
 		//step3.4:	cut roi.
 		crop(grey,roi,cvRect(0,pts[0].y,roi->width,roi->height));
@@ -205,7 +217,8 @@ int algorithm(const char* filename){
 		genVehicleBoxes(boxes,location,l1,l2,l3,l4,drift);
 
 		//step3.9:	verify boxes whether there is a car.
-		verifyBoxes(grey,boxes);
+		//verifyBoxes(grey,boxes);
+		classifyBoxes(frame,boxes);
 	
 		//step3.10:	output results.
 		drawVehicles(frame,boxes);
@@ -218,6 +231,7 @@ int algorithm(const char* filename){
 		cvShowImage("vehicles",frame);
 
 		key_pressed = cvWaitKey(15);
+		
 	}
 	return 1;
 }

@@ -1,5 +1,7 @@
 #include "vehicles.h"
 
+using namespace std;
+using namespace cv;
 
 /*crop iamge*/
 void crop(IplImage* src,IplImage* dest,CvRect rect){
@@ -156,7 +158,7 @@ double shadowBound(IplImage* roi){
 	CvScalar mean;
 	CvScalar dev;
 	cvAvgSdv(roi,&mean,&dev);
-	
+
 	return (mean.val[0]-dev.val[0]);
 }
 
@@ -191,44 +193,12 @@ int getCb(IplImage* roi_sobel_erode,int row,int cb,int ce){
 /*rate of white points*/
 float whitePointsRate(IplImage* roi_sobel,IplImage* roi_sobel_erode,int row,int cb,int ce,int* vb,int* ve){
 
-	/*int cnt = 0;
-	int gap = (ce-cb)/10;
-	unsigned char* ptr = (unsigned char *)(roi_sobel->imageData+row*roi_sobel->widthStep);
 	
-	for(int c=cb;c<ce;c++){
-
-		if(ptr[c]>250){
-		
-			cnt++;
-			if(cnt == 1)
-				*vb = c;
-			gap = (ce-cb)/10;
-		}
-		else if(cnt>0)
-			gap--;
-		else if(cnt==0 && c==ce/2)
-			break;
-
-		if(gap<=0 && ptr[c]<250){
-
-			*ve = c;
-			break;
-		}
-	}
-	float rate = cnt/(float)(ce-cb);*/
-
-	//printf("cb = %d\nce = %d\n",cb,ce);
-	//printf("cnt = %d\nrate = %f\n",cnt,rate);
-	/*std::ofstream outfile("rate-1.txt",std::ios_base::app);
-	outfile<<"cb:"<<cb<<"\t"<<"ce:"<<ce<<"\t"<<"cnt:"<<cnt<<"\t"<<"rate:"<<rate<<"\n";*/
-
 	unsigned char* ptr = (unsigned char*)roi_sobel->imageData+row*roi_sobel->widthStep;
 
 	int cbegin = getCb(roi_sobel_erode,row,cb,ce);
 
 	if(cbegin<0){
-	
-		//printf("cbegin:0\n");
 		return 0;
 	}
 
@@ -247,9 +217,6 @@ float whitePointsRate(IplImage* roi_sobel,IplImage* roi_sobel_erode,int row,int 
 		}
 	}
 	rate = cnt/(float)(ce-cb);
-
-	//printf("cb:%d\tce:%d\tcbegin:%d\tptr[cbegin]:%d\tcnt:%d\trate:%f\n",cb,ce,cbegin,ptr[cbegin],cnt,rate);
-
 	return rate;
 }
 
@@ -257,12 +224,6 @@ float whitePointsRate(IplImage* roi_sobel,IplImage* roi_sobel_erode,int row,int 
 void vehiclesLocation(IplImage* roi_sobel,IplImage* roi_sobel_erode,
 	std::vector<int> l1,std::vector<int> l2,std::vector<int> l3,std::vector<int> l4,
 	vehicle location[3],int drift){
-
-		/*std::ofstream outleft("rate-1.txt",std::ios_base::app);
-		std::ofstream outcenter("rate0.txt",std::ios_base::app);
-		std::ofstream outright("rate1.txt",std::ios_base::app);
-		static int n = 0;
-		n++;*/
 
 		location[0].r = location[1].r = location[2].r = -1;
 		for(int r=0.5*roi_sobel->height;r>=0;r--){
@@ -273,7 +234,6 @@ void vehiclesLocation(IplImage* roi_sobel,IplImage* roi_sobel_erode,
 				if(rate>=0.3){
 			
 					location[0].r = r+drift;
-					//outleft<<"n:"<<n<<"\trate:"<<rate<<"\tr:"<<r<<std::endl;
 				}
 			}
 			if(location[1].r==-1){
@@ -282,7 +242,6 @@ void vehiclesLocation(IplImage* roi_sobel,IplImage* roi_sobel_erode,
 				if(rate>=0.3){
 
 					location[1].r = r+drift;
-					//outcenter<<"n:"<<n<<"\trate:"<<rate<<"\tr:"<<r<<std::endl;
 				}
 			}
 			if(location[2].r==-1){
@@ -291,7 +250,6 @@ void vehiclesLocation(IplImage* roi_sobel,IplImage* roi_sobel_erode,
 				if(rate>=0.3){
 				
 					location[2].r = r+drift;
-					//outright<<"n:"<<n<<"\trate:"<<rate<<"\tr:"<<r<<std::endl;
 				}
 			}
 		}
@@ -380,33 +338,61 @@ void verifyBoxes(IplImage* grey,vehicleBox boxes[]){
 	CvHistogram* hist = cvCreateHist(dims,sizes,type,ranges,1);
 
 	for(int i=0;i<3;i++){
-
-		////step 1:exclude the small boxes...
-		//size = boxes[i].width*boxes[i].height;
-		//if(size<1000)
-		//	boxes[i].valid = false;
 	
-		//step 2:exclude boxes which entropy is low...
 		if(boxes[i].valid){
 			H = Entropy(grey,cvRect(boxes[i].bmin.x,boxes[i].bmin.y,boxes[i].width,boxes[i].height),hist);
-
-			if(H<21)	//21 is threshold which should be calculated
+			if(H<21)
 				boxes[i].valid = false;
 		}
 		else
 			H = 0;
-
-		/*if(!file)
-				cerr<<"oops!\n";
-			else
-				file<<H<<"\t";*/
-
 	}
-	//file<<"\n";
-
 	cvReleaseHist(&hist);
 
 }
+
+/*classify box*/
+void classifyBoxes(IplImage* frame,vehicleBox boxes[]){
+
+	CvSVM svm = CvSVM();  
+	CvSVMParams param;    
+	CvTermCriteria criteria;      
+	criteria = cvTermCriteria( CV_TERMCRIT_EPS, 1000, FLT_EPSILON );      
+	param = CvSVMParams( CvSVM::C_SVC, CvSVM::RBF, 10.0, 0.09, 1.0, 10.0, 0.5, 1.0, NULL, criteria );
+	svm.load("SVM_DATA.xml");
+
+	HOGDescriptor *hog=new HOGDescriptor(cvSize(64,64),cvSize(16,16),cvSize(8,8),cvSize(8,8),9);
+	vector<float>descriptors(1764,0);
+	Mat feather = Mat::zeros(1,1764,CV_32FC1);
+	
+	IplImage* dst;
+	IplImage* img64 = cvCreateImage(cvSize(64,64),IPL_DEPTH_8U,3);
+	char flag = -1;
+	for(int i=1;i<2;i++){
+				
+	dst = cvCreateImage(cvSize(boxes[i].width,boxes[i].height),IPL_DEPTH_8U,3);
+	crop(frame,dst,cvRect(boxes[i].bmin.x,boxes[i].bmin.y,boxes[i].width,boxes[i].height));
+	cvResize(dst,img64);
+	cvNamedWindow("1");
+	cvShowImage("1",dst);
+	cvWaitKey(50);
+	system("pause");
+	hog->compute(img64, descriptors,Size(1,1), Size(0,0));
+	int n=0;    
+    for(vector<float>::iterator iter=descriptors.begin();iter!=descriptors.end();iter++){    
+            
+		feather.at<float>(0,n) = *iter;    
+        n++;    
+    }  
+	flag = svm.predict(feather);
+
+	if(flag==0)
+		boxes[i].valid = false;
+	cvReleaseImage(&dst);
+	}
+	cvReleaseImage(&img64);
+}
+
 /*draw vehicles*/
 void drawVehicles(IplImage* frame,vehicleBox boxes[]){
 
